@@ -12,6 +12,30 @@
 #include <crtdefs.h>
 #include <io.h>
 
+#include <tchar.h>
+
+#ifndef _TDIR
+#ifdef _UNICODE
+#define _TDIR _WDIR
+#define _tdirent    _wdirent
+#define _topendir   _wopendir
+#define _tclosedir  _wclosedir
+#define _treaddir   _wreaddir
+#define _trewinddir _wrewinddir
+#define _ttelldir   _wtelldir
+#define _tseekdir   _wseekdir
+#else
+#define _TDIR DIR
+#define _tdirent    dirent
+#define _topendir   opendir
+#define _tclosedir  closedir
+#define _treaddir   readdir
+#define _trewinddir rewinddir
+#define _ttelldir   telldir
+#define _tseekdir   seekdir
+#endif
+#endif
+
 
 struct dirent
 {

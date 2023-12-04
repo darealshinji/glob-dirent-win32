@@ -89,10 +89,12 @@
 #define _DIAGASSERT(a)	/**/
 #endif
 
-#define	GLOB_LIMIT_STRING	524288	/* number of readdirs */
-#define	GLOB_LIMIT_STAT		128	/* number of stat system calls */
-#define	GLOB_LIMIT_READDIR	65536	/* total buffer size of path strings */
-#define	GLOB_LIMIT_PATH		1024	/* number of path elements */
+#define GLOB_MAX_PATH		32768
+
+#define GLOB_LIMIT_STRING	524288	/* number of readdirs */
+#define GLOB_LIMIT_STAT		128	/* number of stat system calls */
+#define GLOB_LIMIT_READDIR	65536	/* total buffer size of path strings */
+#define GLOB_LIMIT_PATH		1024	/* number of path elements */
 #define GLOB_LIMIT_BRACE	128	/* Number of brace calls */
 
 struct glob_limit {
@@ -102,39 +104,39 @@ struct glob_limit {
 	size_t l_brace;
 };
 
-#define	DOLLAR		'$'
-#define	DOT			'.'
-#define	EOS			'\0'
-#define	LBRACKET	'['
-#define	NOT			'!'
-#define	QUESTION	'?'
-#define	RANGE		'-'
-#define	RBRACKET	']'
-#define	STAR		'*'
-#define	TILDE		'~'
-#define	UNDERSCORE	'_'
-#define	LBRACE		'{'
-#define	RBRACE		'}'
-#define	COMMA		','
+#define DOLLAR		'$'
+#define DOT			'.'
+#define EOS			'\0'
+#define LBRACKET	'['
+#define NOT			'!'
+#define QUESTION	'?'
+#define RANGE		'-'
+#define RBRACKET	']'
+#define STAR		'*'
+#define TILDE		'~'
+#define UNDERSCORE	'_'
+#define LBRACE		'{'
+#define RBRACE		'}'
+#define COMMA		','
 #define QUOTE		'\\'
-#define	QUOTE_WIN	'^'
+#define QUOTE_WIN	'^'
 #define SEP			'/'
-#define	SEP_WIN		'\\'
+#define SEP_WIN		'\\'
 
-#define	M_QUOTE		(char)0x80
-#define	M_PROTECT	(char)0x40
-#define	M_MASK		(char)0xff
-#define	M_ASCII		(char)0x7f
+#define M_QUOTE		(char)0x80
+#define M_PROTECT	(char)0x40
+#define M_MASK		(char)0xff
+#define M_ASCII		(char)0x7f
 
-#define	CHAR(c)		((char)((c)&M_ASCII))
-#define	META(c)		((char)((c)|M_QUOTE))
-#define	M_ALL		META('*')
-#define	M_END		META(']')
-#define	M_NOT		META('!')
-#define	M_ONE		META('?')
-#define	M_RNG		META('-')
-#define	M_SET		META('[')
-#define	ismeta(c)	(((c)&M_QUOTE) != 0)
+#define CHAR(c)		((char)((c)&M_ASCII))
+#define META(c)		((char)((c)|M_QUOTE))
+#define M_ALL		META('*')
+#define M_END		META(']')
+#define M_NOT		META('!')
+#define M_ONE		META('?')
+#define M_RNG		META('-')
+#define M_SET		META('[')
+#define ismeta(c)	(((c)&M_QUOTE) != 0)
 
 #define is_separator(c)	((c)==SEP||((pglob->gl_flags & GLOB_WIN32) && (c)==SEP_WIN))
 
@@ -175,10 +177,10 @@ glob(const char * __restrict pattern, int flags, int (*errfunc)(const char *,
 {
 	const unsigned char *patnext;
 	int c;
-	char *bufnext, *bufend, patbuf[MAX_PATH+1];
+	char *bufnext, *bufend, patbuf[GLOB_MAX_PATH+1];
 	struct glob_limit limit = { 0, 0, 0, 0 };
 
-	_DIAGASSERT(_pattern != NULL);
+	_DIAGASSERT(pattern != NULL);
 
 	if (flags & GLOB_WIN32) {
 		g_quote_char = QUOTE_WIN;
@@ -197,7 +199,7 @@ glob(const char * __restrict pattern, int flags, int (*errfunc)(const char *,
 	pglob->gl_matchc = 0;
 
 	bufnext = patbuf;
-	bufend = bufnext + MAX_PATH;
+	bufend = bufnext + GLOB_MAX_PATH;
 	if (flags & GLOB_NOESCAPE) {
 		while (bufnext < bufend && (c = *patnext++) != EOS) 
 			*bufnext++ = c;
@@ -218,8 +220,8 @@ glob(const char * __restrict pattern, int flags, int (*errfunc)(const char *,
 
 	if (flags & GLOB_BRACE)
 	    return globexp1(patbuf, pglob, &limit);
-	else
-	    return glob0(patbuf, pglob, &limit);
+
+    return glob0(patbuf, pglob, &limit);
 }
 
 /*
@@ -266,7 +268,7 @@ globexp2(const char *ptr, const char *pattern, glob_t *pglob, int *rv,
 	int     i;
 	char   *lm, *ls;
 	const char *pe, *pm, *pl;
-	char    patbuf[MAX_PATH + 1];
+	char    patbuf[GLOB_MAX_PATH + 1];
 
 	_DIAGASSERT(ptr != NULL);
 	_DIAGASSERT(pattern != NULL);
@@ -395,16 +397,16 @@ globtilde(const char **qpatnext, const char *pattern, char *patbuf,
 		return 0;
 
 	/* Copy up to the end of the string or path separator */
-	for (p = pattern + 1, d = (char *)(void *)patbuf; 
-	     d < (char *)(void *)pend && *p && !is_separator(*p);
+	for (p = pattern + 1, d = patbuf;
+	     d < pend && *p && !is_separator(*p);
 	     *d++ = *p++)
 		continue;
 
-	if (d == (char *)(void *)pend)
+	if (d == pend)
 		return GLOB_ABEND;
 
 	*d = EOS;
-	d = (char *)(void *)patbuf;
+	d = patbuf;
 
 	/* Get home path from environment variables */
 	h = g_getenv("HOMEDRIVE");
@@ -495,7 +497,7 @@ glob0(const char *pattern, glob_t *pglob, struct glob_limit *limit)
 	const char *qpatnext;
 	int c, error;
 	size_t oldpathc;
-	char *bufnext, patbuf[MAX_PATH+1];
+	char *bufnext, patbuf[GLOB_MAX_PATH+1];
 
 	_DIAGASSERT(pattern != NULL);
 	_DIAGASSERT(pglob != NULL);
@@ -601,7 +603,7 @@ compare(const void *p, const void *q)
 static int
 glob1(char *pattern, glob_t *pglob, struct glob_limit *limit)
 {
-	char pathbuf[MAX_PATH+1];
+	char pathbuf[GLOB_MAX_PATH+1];
 
 	_DIAGASSERT(pattern != NULL);
 	_DIAGASSERT(pglob != NULL);
@@ -703,7 +705,7 @@ glob3(char *pathbuf, char *pathend, char *pathlim, const char *pattern,
 	DIR *dirp;
 	struct stat sbuf;
 	int error;
-	char buf[MAX_PATH+1];
+	char buf[GLOB_MAX_PATH+1];
 	int globstar = 0;
 	int chase_symlinks = 0;
 	const char *termstar = NULL;
@@ -1066,7 +1068,7 @@ glob_pattern_p(const char *pattern, int quote)
 static DIR *
 g_opendir(char *str, glob_t *pglob)
 {
-	char buf[MAX_PATH+1];
+	char buf[GLOB_MAX_PATH+1];
 
 	_DIAGASSERT(str != NULL);
 	_DIAGASSERT(pglob != NULL);
@@ -1088,7 +1090,7 @@ g_opendir(char *str, glob_t *pglob)
 static int
 g_stat(char *fn, struct stat *sb, glob_t *pglob)
 {
-	char buf[MAX_PATH+1];
+	char buf[GLOB_MAX_PATH+1];
 
 	_DIAGASSERT(fn != NULL);
 	_DIAGASSERT(sb != NULL);

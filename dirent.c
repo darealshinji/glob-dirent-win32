@@ -34,25 +34,7 @@
 #define SUFFIX	_T("*")
 #define	SLASH	_T("\\")
 
-#ifdef _UNICODE
-#define _TDIR _WDIR
-#define _tdirent    _wdirent
-#define _topendir   _wopendir
-#define _tclosedir  _wclosedir
-#define _treaddir   _wreaddir
-#define _trewinddir _wrewinddir
-#define _ttelldir   _wtelldir
-#define _tseekdir   _wseekdir
-#else
-#define _TDIR DIR
-#define _tdirent    dirent
-#define _topendir   opendir
-#define _tclosedir  closedir
-#define _treaddir   readdir
-#define _trewinddir rewinddir
-#define _ttelldir   telldir
-#define _tseekdir   seekdir
-#endif
+#define DIRENT_MAX_PATH 32768
 
 
 /*
@@ -67,7 +49,7 @@ _topendir (const _TCHAR *szPath)
   _TDIR *nd;
   unsigned int rc;
   size_t len;
-  _TCHAR szFullPath[MAX_PATH+1];
+  _TCHAR szFullPath[DIRENT_MAX_PATH+1];
 
   errno = 0;
 
@@ -99,7 +81,7 @@ _topendir (const _TCHAR *szPath)
     }
 
   /* Make an absolute pathname.  */
-  _tfullpath (szFullPath, szPath, MAX_PATH);
+  _tfullpath (szFullPath, szPath, DIRENT_MAX_PATH);
 
   /* Allocate enough space to store DIR structure and the complete
    * directory path given. */
